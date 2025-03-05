@@ -14,22 +14,31 @@ import { addChatInServer } from '@/app/chat/actions/chat';
 import { addMessageInServer } from '@/app/chat/actions/message';
 import { ChatType } from '../db/schema';
 import { localDb } from '@/app/db/localDb';
+import { fetchAvailableLlmModels } from '../adapter/actions';
 
 const Home = () => {
   const t = useTranslations('Chat');
   const router = useRouter();
   const { data: session, status } = useSession();
   const { visible, showLogin, hideLogin } = useLoginModal();
-  const { modelList, currentModel, isPending } = useModelListStore();
+  const { modelList, currentModel, isPending, initModelList } = useModelListStore();
   const { chatList, setChatList } = useChatListStore();
   const [greetingText, setGreetingText] = useState('');
   const [showGuideAlert, setShowGuideAlert] = useState(false);
+  const [hasFetchedModels, setHasFetchedModels] = useState(false);
 
   useEffect(() => {
+    const fetchModels = async () => {
+      const remoteModelList = await fetchAvailableLlmModels();
+      initModelList(remoteModelList);
+      setHasFetchedModels(true);
+    }
     if (status === 'unauthenticated') {
       showLogin();
+    } else if (status === 'authenticated' && !hasFetchedModels) {
+      fetchModels();
     }
-  }, [status, showLogin]);
+  }, [status, showLogin, hasFetchedModels]);
 
   useEffect(() => {
     if (!isPending && modelList.length === 0) {
